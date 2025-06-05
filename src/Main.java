@@ -37,7 +37,7 @@ public class Main {
 
         if (choix == 1) {
             registerUser();
-                        if (loginUser()) {
+            if (loginUser()) {
                 showFiles();
             }
         } else if (choix == 2) {
@@ -58,9 +58,9 @@ public class Main {
         System.out.print("Mot de passe : ");
         String password = scanner.nextLine();
 
-        FileWriter fw = new FileWriter(USERS_FILE, true);
-        fw.write(username + ":" + password + "\n");
-        fw.close();
+        try (FileWriter fw = new FileWriter(USERS_FILE, true)) {
+            fw.write(username + ":" + password + "\n");
+        }
 
         System.out.println("Compte créé avec succès !");
     }
@@ -71,16 +71,16 @@ public class Main {
         System.out.print("Mot de passe : ");
         String password = scanner.nextLine();
 
-        BufferedReader reader = new BufferedReader(new FileReader(USERS_FILE));
-        String line;
-        while ((line = reader.readLine()) != null) {
-            String[] parts = line.split(":");
-            if (parts.length == 2 && parts[0].equals(username) && parts[1].equals(password>
-                reader.close();
-                return true;
+        try (BufferedReader reader = new BufferedReader(new FileReader(USERS_FILE))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                String[] parts = line.split(":");
+                if (parts.length == 2 && parts[0].equals(username) && parts[1].equals(password)) {
+                    return true;
+                }
             }
         }
-        reader.close();
+
         return false;
     }
 
@@ -90,7 +90,6 @@ public class Main {
             System.out.println("Le dossier " + FILES_FOLDER + " n'existe pas.");
             return;
         }
-              }
 
         File[] files = folder.listFiles();
         if (files == null || files.length == 0) {
@@ -114,14 +113,11 @@ public class Main {
 
         File selectedFile = files[choix - 1];
 
-        // Suppression de l'ouverture locale du fichier (pas d'interface graphique)
-        // Desktop.getDesktop().open(selectedFile); // supprimé
-
         // Affiche lien HTTP pour téléchargement
-        System.out.println("Lien de téléchargement : http://3.85.234.48:8088/" + selectedF>
+        System.out.println("Lien de téléchargement : http://3.85.234.48:8088/" + selectedFile.getName());
     }
 
-        public static void startHttpServer() {
+    public static void startHttpServer() {
         try (ServerSocket serverSocket = new ServerSocket(8088)) {
             System.out.println("Serveur HTTP actif sur le port 8088...");
 
@@ -136,20 +132,22 @@ public class Main {
 
     public static void handleRequest(Socket clientSocket) {
         try (
-            BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getI>
+            BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
             OutputStream out = clientSocket.getOutputStream()
         ) {
             String requestLine = in.readLine();
             if (requestLine == null || !requestLine.startsWith("GET")) return;
 
             String[] parts = requestLine.split(" ");
+            if (parts.length < 2) return;
+
             String path = URLDecoder.decode(parts[1], "UTF-8");
             String filePath = FILES_FOLDER + path.substring(1); // retire le '/'
 
             File file = new File(filePath);
             if (file.exists() && !file.isDirectory()) {
                 byte[] content = Files.readAllBytes(file.toPath());
-                String header = "HTTP/1.1 200 OK\r\nContent-Length: " + content.length + ">
+                String header = "HTTP/1.1 200 OK\r\nContent-Length: " + content.length + "\r\n\r\n";
                 out.write(header.getBytes());
                 out.write(content);
             } else {
@@ -158,11 +156,10 @@ public class Main {
             }
         } catch (IOException e) {
             System.out.println("Erreur de traitement : " + e.getMessage());
+        } finally {
+            try {
+                clientSocket.close();
+            } catch (IOException ignored) {}
         }
     }
 }
-
-
-
-
-
