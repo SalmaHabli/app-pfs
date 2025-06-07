@@ -1,0 +1,7 @@
+<h2>Fichiers disponibles</h2>
+<ul>
+  {% for f in files %}
+    <li><a href="/download/{{ f }}">{{ f }}</a></li>
+  {% endfor %}
+</ul>
+<a href="/">Déconnexion</a>
